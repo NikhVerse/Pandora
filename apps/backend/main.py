@@ -23,6 +23,9 @@ if os.path.exists(dotenv_path):
 else:
     load_dotenv()
 
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from config import settings
 from auth import get_current_user
 
