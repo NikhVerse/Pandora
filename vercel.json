@@ -7,6 +7,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://your-railway-backend-url.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/((?!api|assets|favicon.ico|manifest.json|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -24,8 +28,5 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
