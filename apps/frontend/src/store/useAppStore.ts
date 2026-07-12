@@ -199,17 +199,18 @@ export const useAppStore = create<AppState>((set) => ({
       ),
     })),
   // Dynamic Model Selector Implementation
-  selectedModel: localStorage.getItem('pandora_selected_model') || 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+  selectedModel: localStorage.getItem('pandora_selected_model') || 'accounts/fireworks/models/kimi-k2p6',
   setSelectedModel: (model) => {
     localStorage.setItem('pandora_selected_model', model);
     set({ selectedModel: model });
   },
   supportedModels: [
-    { id: 'accounts/fireworks/models/llama-v3p1-70b-instruct', label: 'Llama 3.1 70B' },
-    { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', label: 'Llama 3.1 8B' },
-    { id: 'accounts/fireworks/models/deepseek-v3', label: 'DeepSeek V3' },
-    { id: 'accounts/fireworks/models/mixtral-8x7b-instruct', label: 'Mixtral 8x7B' },
-    { id: 'accounts/fireworks/models/qwen2p5-72b-instruct', label: 'Qwen 2.5 72B' },
+    { id: 'accounts/fireworks/models/flux-1-schnell-fp8', label: 'Flux 1 Schnell' },
+    { id: 'accounts/fireworks/models/gpt-oss-120b', label: 'Gpt Oss 120B' },
+    { id: 'accounts/fireworks/models/glm-5p1', label: 'GLM 5P1' },
+    { id: 'accounts/fireworks/models/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+    { id: 'accounts/fireworks/models/kimi-k2p6', label: 'Kimi K2.6' },
+    { id: 'accounts/fireworks/models/glm-5p2', label: 'GLM 5P2' },
   ],
   setSupportedModels: (supportedModels) => set({ supportedModels }),
 }));
