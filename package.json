@@ -10,6 +10,8 @@
     "packages/shared"
   ],
   "scripts": {
+    "build": "npm run build:frontend",
+    "vercel-build": "npm run build:frontend",
     "dev:frontend": "npm run dev -w apps/frontend",
     "build:frontend": "npm run build -w apps/frontend",
     "install:all": "npm install"
