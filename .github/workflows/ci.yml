@@ -1,0 +1,147 @@
+name: Pandora CI/CD
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BACKEND: ${{ github.repository_owner }}/pandora-backend
+  IMAGE_FRONTEND: ${{ github.repository_owner }}/pandora-frontend
+
+jobs:
+  # ── Job 1: Frontend Build & Type Check ──────────────────────────
+  frontend-ci:
+    name: Frontend — Build & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript + Vite build
+        run: npm run build:frontend
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/frontend/dist
+          retention-days: 7
+
+  # ── Job 2: Backend Syntax & Import Check ────────────────────────
+  backend-ci:
+    name: Backend — Compile & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r apps/backend/requirements.txt
+
+      - name: Syntax compile check
+        run: |
+          python -m py_compile apps/backend/main.py
+          python -m py_compile apps/backend/auth.py
+          python -m py_compile apps/backend/config.py
+          python -m py_compile apps/backend/fireworks.py
+
+      - name: Run pytest
+        run: |
+          cd apps/backend
+          pytest test_main.py -v --tb=short
+        env:
+          FIREWORKS_API_KEY: mock-key-for-ci
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_ANON_KEY: mock-anon-key
+
+  # ── Job 3: Docker Build & Push (main branch only) ───────────────
+  docker-publish:
+    name: Docker — Build & Push Images
+    needs: [frontend-ci, backend-ci]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata — Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build and push — Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/backend
+          file: ./apps/backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata — Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build and push — Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
